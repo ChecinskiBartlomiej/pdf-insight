@@ -1,0 +1,12 @@
+name = "pdf-insight-api"
+main = "worker/index.ts"
+compatibility_date = "2026-10-01"
+[vars]
+ALLOWED_ORIGINS = "http://localhost:5173"
+ANALYSIS_ENABLED = "true"
+[[durable_objects.bindings]]
+name = "GATE"
+class_name = "AnalysisGate"
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["AnalysisGate"]
