@@ -15,4 +15,14 @@ Punkty 3–4 są promptami aplikacji. W testach jednostkowych użyto atrap odpow
 
 ## Weryfikacja i poprawki
 
-Wyniki faktycznych komend i zauważone błędy zostaną wpisane po zakończeniu kontroli. Nie wykonano jeszcze publicznego wdrożenia, sprawdzenia umowy rekrutacyjnej ani pomiaru prawdziwego AI. Ostateczna weryfikacja faktów i zrozumienie kodu przez kandydata pozostają wymagane przed oddaniem.
+Wykonano: czystą instalację `npm ci --ignore-scripts`, ESLint, TypeScript frontendu i Workera, 23 testy Vitest, Prettier, produkcyjny build ze ścieżką `/pdf-insight/`, próbne spakowanie przez Wrangler. Sprawdzono w artefaktach prawidłową ścieżkę do bundlowanego workera PDF.js. Test lokalnego runtime Miniflare/workerd z atrapą Groq przeszedł 7 kontroli: preflight, CORS, walidacja wejścia, limit rozmiaru body, metadane odpowiedzi, nagłówek CORS i wspólny limit żądań. Kod testu jest w `scripts/check-worker.mjs`.
+
+Rzeczywiste błędy i poprawki AI:
+
+- Początkowo podano `isEvalSupported` do `getDocument`; zainstalowane typy PDF.js nie wspierały tej opcji. Usunięto ją, ponowiono kontrolę typów.
+- Zmiana manifestu w trakcie instalacji pozostawiła inną wersję PDF.js lokalnie (6.x) niż w lockfile (5.x). Wyrównano manifest i lockfile oraz przeprowadzono czystą instalację i ponowne sprawdzenia. Do oddania użyto lockfile z PDF.js 5.7.284.
+- ESLint zgłosił brak `cause` przy opakowywaniu przechwyconych błędów. Dodano przyczynę, zachowując czytelne komunikaty dla użytkownika.
+- Pierwszy build miał duży wspólny pakiet z PDF.js. Odczyt PDF przeniesiono do dynamicznego importu: pakiet startowy zmalał z około 746 do 317 kB, a PDF.js ładuje się przy analizie.
+- Pierwsza próba testu Miniflare używała starego kształtu konfiguracji. Dopasowano ją przez dostarczony `convertV4MiniflareOptions`; późniejszy problem ze ścieżką modułu poza katalogiem rozwiązano przez przekazanie treści gotowego bundla. Test po poprawkach przeszedł.
+
+Nie udało się uruchomić infrastruktury podglądu przeglądarkowego (brak daemon sites-previewd). Nie wykonano wizualnego sprawdzenia, zrzutu ekranu, testów mobilnych ani ręcznej kontroli klawiaturą. Test ekstrakcji PDF używa atrap PDF.js: potwierdza logikę i błędy, nie rzeczywisty parser w przeglądarce. Test prompt injection potwierdza rozdzielenie instrukcji i danych, nie odporność prawdziwego modelu. Brakuje rzeczywistego testu API, pomiaru <30 s i publicznego demo. Nie wykonano jeszcze publicznego wdrożenia, sprawdzenia umowy rekrutacyjnej ani pomiaru prawdziwego AI. Ostateczna weryfikacja faktów i zrozumienie kodu przez kandydata pozostają wymagane przed oddaniem.
