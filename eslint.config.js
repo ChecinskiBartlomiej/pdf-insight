@@ -3,7 +3,14 @@ import tseslint from 'typescript-eslint';
 import globals from 'globals';
 import hooks from 'eslint-plugin-react-hooks';
 export default tseslint.config(
-  { ignores: ['dist/**', '.wrangler/**', '.worker-test-build/**'] },
+  {
+    ignores: [
+      'dist/**',
+      'public/ocr/**',
+      '.wrangler/**',
+      '.worker-test-build/**',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

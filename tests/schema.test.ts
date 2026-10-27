@@ -74,7 +74,7 @@ describe('result schema', () => {
   it('bounds requests', () => {
     expect(
       requestSchema.safeParse({
-        text: 'a'.repeat(12001),
+        text: 'a'.repeat(60001),
         fileName: 'x.pdf',
         pages: 1,
       }).success,

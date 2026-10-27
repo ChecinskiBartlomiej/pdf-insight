@@ -4,3 +4,5 @@ package-lock.json
 .wrangler
 coverage
 .worker-test-build
+
+public/ocr/

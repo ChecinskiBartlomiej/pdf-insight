@@ -1,6 +1,8 @@
-import { it, expect, vi } from 'vitest';
+import { it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { callGroq } from '../worker/groq';
 import { validModel } from './fixtures';
+beforeEach(() => vi.useFakeTimers());
+afterEach(() => vi.useRealTimers());
 const input = { text: 'Tekst umowy', fileName: 'umowa.pdf', pages: 1 };
 const ok = (content: unknown) =>
   Response.json({
@@ -13,17 +15,18 @@ it('retries malformed model output exactly once', async () => {
     .fn<typeof fetch>()
     .mockResolvedValueOnce(ok({}))
     .mockResolvedValueOnce(ok(validModel));
-  expect(
-    (await callGroq(input, 'test', new AbortController().signal, mock)).document
-      .title,
-  ).toBe('Umowa serwisowa');
+  const pending = callGroq(input, 'test', new AbortController().signal, mock);
+  await vi.runAllTimersAsync();
+  expect((await pending).document.title).toBe('Umowa serwisowa');
   expect(mock).toHaveBeenCalledTimes(2);
 });
 it('stops after second invalid result', async () => {
   const mock = vi.fn<typeof fetch>().mockImplementation(async () => ok({}));
-  await expect(
+  const pending = expect(
     callGroq(input, 'test', new AbortController().signal, mock),
   ).rejects.toThrow('dwukrotnie');
+  await vi.runAllTimersAsync();
+  await pending;
   expect(mock).toHaveBeenCalledTimes(2);
 });
 it('does not retry quota errors', async () => {
@@ -41,9 +44,11 @@ it('rejects truncated result and retries once', async () => {
       choices: [{ finish_reason: 'length', message: { content: '{}' } }],
     }),
   );
-  await expect(
+  const pending = expect(
     callGroq(input, 'test', new AbortController().signal, mock),
   ).rejects.toThrow();
+  await vi.runAllTimersAsync();
+  await pending;
   expect(mock).toHaveBeenCalledTimes(2);
 });
 it('treats PDF content as data in user message', async () => {

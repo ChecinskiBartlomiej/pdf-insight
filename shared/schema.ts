@@ -1,8 +1,8 @@
 import { z } from 'zod';
-export const MAX_FILE_BYTES = 10 * 1024 * 1024;
+export const MAX_FILE_BYTES = 10000000;
 // Conservative limit for the free token budget; never silently truncate.
-export const MAX_TEXT_CHARS = 12000;
-export const MAX_REQUEST_BYTES = 80000;
+export const MAX_TEXT_CHARS = 60000;
+export const MAX_REQUEST_BYTES = 400000;
 const text = z.string().trim().min(1).max(3000);
 const isoDate = z.iso.date();
 // Runtime Intl data is the source for assigned ISO codes, not just a regex.
@@ -63,20 +63,30 @@ export const modelSchema = z
   })
   .strict();
 export const resultSchema = modelSchema.extend({
-  document: modelSchema.shape.document
-    .extend({
+  document: z
+    .object({
       fileName: z.string().min(1).max(255),
       pages: z.number().int().min(1).max(200),
+      ...modelSchema.shape.document.shape,
     })
     .strict(),
+  processing: z
+    .object({
+      ocrPages: z.array(z.number().int().min(1).max(200)).max(200),
+      chunks: z.number().int().min(1).max(8),
+    })
+    .strict()
+    .optional(),
 });
 export const requestSchema = z
   .object({
     text: z.string().trim().min(1).max(MAX_TEXT_CHARS),
+    mode: z.enum(['document', 'fragment', 'merge']).optional(),
     fileName: z.string().min(1).max(255),
     pages: z.number().int().min(1).max(200),
   })
   .strict();
+export type ModelResult = z.infer<typeof modelSchema>;
 export type AnalysisResult = z.infer<typeof resultSchema>;
 export type AnalysisRequest = z.infer<typeof requestSchema>;
 export function validateModel(value: unknown) {

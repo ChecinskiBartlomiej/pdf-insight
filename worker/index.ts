@@ -40,7 +40,7 @@ class AnalysisGate extends DurableObject<Env> {
       await tx.put({
         daily: { day, count: daily?.day === day ? daily.count + 1 : 1 },
         recent: [...recent, now],
-        leases: [...leases, { id, until: now + 35000 }],
+        leases: [...leases, { id, until: now + 115000 }],
         peers: [...peers, { ip, time: now }],
       });
       return id;
@@ -148,12 +148,12 @@ export default {
       if (!lease)
         throw new ApiError(
           429,
-          'Limit demo: 1 analiza na minutę i 30 analiz dziennie (UTC), wspólnie dla wszystkich. Spróbuj później.',
+          'Limit demo: 1 żądanie analizy na minutę i 30 dziennie (UTC), wspólnie dla wszystkich. Długi PDF zużywa kilka żądań. Spróbuj później.',
         );
       const result = await callGroq(
         parsed.data,
         env.GROQ_API_KEY,
-        AbortSignal.timeout(24000),
+        AbortSignal.timeout(105000),
       );
       return reply(
         resultSchema.parse({

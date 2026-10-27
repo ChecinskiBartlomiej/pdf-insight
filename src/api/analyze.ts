@@ -11,10 +11,14 @@ export async function analyze(input: AnalysisRequest, signal: AbortSignal) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
-      signal,
+      signal: AbortSignal.any([signal, AbortSignal.timeout(115000)]),
     });
   } catch (error) {
-    if (signal.aborted)
+    if (
+      signal.aborted ||
+      (error instanceof Error &&
+        ['AbortError', 'TimeoutError'].includes(error.name))
+    )
       throw new Error(
         'Analiza przekroczyła czas oczekiwania. Spróbuj ponownie.',
         { cause: error },

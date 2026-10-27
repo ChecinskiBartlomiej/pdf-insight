@@ -68,7 +68,7 @@ try {
     403,
   );
   assert.equal((await call({})).status, 400);
-  assert.equal((await call({ text: 'x'.repeat(81000) })).status, 413);
+  assert.equal((await call({ text: 'x'.repeat(400001) })).status, 413);
   const input = {
     text: 'Umowa serwisowa. 12500 PLN netto.',
     fileName: 'trusted-name.pdf',

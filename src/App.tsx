@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react';
-import { analyze } from './api/analyze';
 import { validateFile } from './lib/file';
 import Results from './components/Results';
 import type { AnalysisResult } from '../shared/schema';
@@ -43,11 +42,19 @@ export default function App() {
     setPage('Otwieranie dokumentu…');
     try {
       const { extractPdf } = await import('./lib/pdf');
-      const extracted = await extractPdf(file, (n, total) =>
-        setPage(`Odczytano ${n} z ${total} stron`),
+      const extracted = await extractPdf(
+        file,
+        (n, total) => setPage(`Odczytano ${n} z ${total} stron`),
+        setPage,
       );
       setPhase('analyzing');
-      const data = await analyze(extracted, AbortSignal.timeout(30000));
+      const { analyzeDocument } = await import('./api/analyzeDocument');
+      setPage('Analiza tekstu przez AI…');
+      const data = await analyzeDocument(
+        extracted,
+        setPage,
+        AbortSignal.timeout(1200000),
+      );
       setResult(data);
       requestAnimationFrame(() => resultRef.current?.focus());
     } catch (e) {
@@ -174,6 +181,19 @@ export default function App() {
               onChange={(e) => select(e.target.files)}
             />
           </div>
+          <aside
+            className="analysis-info"
+            aria-label="Czas analizy dłuższych dokumentów"
+          >
+            <strong>Dłuższe dokumenty analizujemy w częściach</strong>
+            <p>
+              Darmowa konfiguracja tego demo zakłada budżet Groq 8000 tokenów na
+              minutę, obejmujący tekst, instrukcje i odpowiedź AI. Dłuższy tekst
+              dzielimy automatycznie. Między żądaniami czekamy 65 sekund,
+              dlatego analiza może potrwać kilka minut. Nie musisz samodzielnie
+              dzielić PDF-a.
+            </p>
+          </aside>
           <div className="action-row">
             <label className="consent">
               <input
@@ -210,11 +230,7 @@ export default function App() {
                     ? 'Odczyt tekstu z PDF'
                     : 'Analiza dokumentu przez AI'}
                 </strong>
-                <p>
-                  {phase === 'reading'
-                    ? page
-                    : 'Tworzenie podsumowania i sprawdzanie danych…'}
-                </p>
+                <p>{page}</p>
               </div>
             </div>
           )}
@@ -255,7 +271,7 @@ export default function App() {
           danych
         </span>
         <span>
-          Bez OCR · do ok. 11 000 znaków · wyniki AI wymagają weryfikacji
+          OCR PL/EN · do 60 000 znaków · długie PDF-y mogą wymagać kilku minut
         </span>
       </footer>
     </>

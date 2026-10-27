@@ -24,6 +24,14 @@ export default function Results({ result }: { result: AnalysisResult }) {
   };
   return (
     <section className="results" aria-label="Wyniki analizy">
+      {result.processing && (
+        <p className="result-note">
+          Przetworzono cały odczytany tekst. Liczba części:{' '}
+          {result.processing.chunks}.
+          {result.processing.ocrPages.length > 0 &&
+            ` OCR użyto na stronach: ${result.processing.ocrPages.join(', ')}. Sprawdź rozpoznane dane ze skanem.`}
+        </p>
+      )}
       <div className="result-heading">
         <div>
           <span className="eyebrow">ANALIZA GOTOWA</span>

@@ -1,73 +1,169 @@
 # PDF Insight
 
-Aplikacja React + TypeScript: PDF → tekst → podsumowanie AI → zwalidowany JSON.
+Aplikacja webowa, która odczytuje PDF, tworzy krótkie podsumowanie i zamienia treść dokumentu w uporządkowane dane JSON.
 
-**Status:** kod przygotowany do wdrożenia. Publiczne repozytorium i demo GitHub Pages nie zostały jeszcze utworzone. Po publikacji wpisz tutaj rzeczywiste linki. Bez ustawienia API analiza nie zadziała.
+## Demo i repozytorium
 
-## Uruchomienie
+- **Demo GitHub Pages:**
+- **Publiczne repozytorium:**
+- **Zrzut ekranu:**
 
-Wymagany Node.js 24 i npm. Nie wklejaj klucza API do frontendu ani do Git.
+## Funkcje
+
+- Wybór pliku PDF lub przeciągnięcie go do pola wgrywania.
+- Walidacja rozmiaru, rozszerzenia i odczytu dokumentu.
+- Odczyt tekstu w przeglądarce przez PDF.js.
+- Lokalny OCR stron bez warstwy tekstowej: Tesseract.js, języki polski i angielski.
+- Podsumowanie w 3–5 zdaniach oraz 3–7 kluczowych punktów.
+- Rozpoznawanie typu dokumentu, języka, tytułu, dat, kwot, osób i organizacji.
+- Automatyczne dzielenie długiego tekstu i łączenie wyników.
+- Podgląd JSON, kopiowanie i pobieranie wyniku jako pliku `.json`.
+- Komunikaty postępu i błędów oraz możliwość ponowienia analizy.
+- Zgoda na przekazanie tekstu do zewnętrznego API przed rozpoczęciem analizy.
+
+## Technologie i architektura
+
+| Warstwa              | Technologie                                      |
+| -------------------- | ------------------------------------------------ |
+| Frontend             | React, Vite, TypeScript strict                   |
+| Odczyt PDF           | PDF.js 6.2.108, wariant legacy                   |
+| OCR                  | Tesseract.js, lokalne zasoby PL/EN i WebAssembly |
+| Backend              | Cloudflare Workers, Durable Object               |
+| AI                   | Groq API, model `openai/gpt-oss-120b`            |
+| Walidacja            | Zod, JSON Schema / Structured Outputs            |
+| Dzielenie tekstu     | gpt-tokenizer, kodowanie o200k_harmony           |
+| Kontrole             | Vitest, ESLint, Prettier, TypeScript             |
+| Publikacja frontendu | GitHub Actions i GitHub Pages                    |
+
+PDF jest odczytywany lokalnie. Po wyrażeniu zgody wyodrębniony tekst i metadane trafiają do Workera, który sprawdza dane i limity, a następnie wywołuje Groq. Odpowiedź jest walidowana na backendzie i ponownie na frontendzie. Nazwę pliku i liczbę stron dodaje backend na podstawie metadanych aplikacji, a nie odpowiedzi modelu.
+
+GitHub Pages obsługuje frontend. Backend wymaga osobnego wdrożenia na Cloudflare; samo opublikowanie strony nie uruchamia API.
+
+```text
+src/App.tsx                 — wybór pliku, zgoda, stany analizy
+src/components/Results.tsx  — prezentacja i eksport wyników
+src/lib/file.ts             — podstawowa walidacja pliku
+src/lib/pdf.ts              — ekstrakcja tekstu i uruchamianie OCR
+src/lib/ocr.ts              — lokalne rozpoznawanie tekstu
+src/lib/merge.ts            — łączenie faktów z fragmentów
+src/api/analyze.ts          — komunikacja z backendem
+src/api/analyzeDocument.ts  — analiza części i oczekiwanie
+shared/schema.ts           — schematy, typy i limity
+shared/tokens.ts           — dzielenie tekstu według tokenów
+worker/index.ts            — endpoint, CORS i limiter
+worker/groq.ts             — prompt, wywołanie modelu i walidacja
+scripts/copy-ocr.mjs        — przygotowanie zasobów OCR
+```
+
+## Uruchomienie lokalne
+
+Wymagania: Node.js 24, npm i klucz API Groq. Jeśli używasz nvm, wersję można wybrać poleceniem `nvm use` w katalogu projektu.
+
+### 1. Instalacja i frontend
+
+W głównym katalogu projektu:
 
 ```bash
 npm ci
 cp .env.example .env
+```
+
+Plik `.env`:
+
+```dotenv
+VITE_API_URL=http://localhost:8787
+VITE_BASE_PATH=/
+```
+
+Uruchom frontend:
+
+```bash
 npm run dev
 ```
 
-W drugim terminalu:
+Otwórz <http://localhost:5173/>. Polecenia `dev` i `build` najpierw kopiują zasoby OCR z zależności do `public/ocr`. Nie trzeba wykonywać tego ręcznie.
 
-```bash
-npx wrangler login
-npx wrangler secret put GROQ_API_KEY
+### 2. Backend w drugim terminalu
+
+Utwórz w głównym katalogu plik `.dev.vars`:
+
+```dotenv
+GROQ_API_KEY=WPISZ_TUTAJ_WLASNY_KLUCZ
 ```
 
-Sekret z powyższej komendy dotyczy wdrożonego Workera. Do pracy lokalnej utwórz ignorowany plik `.dev.vars` z `GROQ_API_KEY=twoj_klucz` (samodzielnie, poza rozmową). Następnie `npm run worker:dev`. Frontend: http://localhost:5173, API: http://localhost:8787. Konto Groq pozostaw na Free.
-
-## Wdrożenie krok po kroku
-
-1. Utwórz puste publiczne repozytorium `pdf-insight` na GitHub. Rozpakuj projekt; nie dołączaj node_modules, .env ani .dev.vars.
-2. W `wrangler.toml` zmień `ALLOWED_ORIGINS` na `https://TWOJ_LOGIN.github.io` (bez ścieżki repozytorium i bez końcowego ukośnika). Lokalny adres dodaj po przecinku tylko jeśli jest potrzebny. Origin przeglądarki nie zawiera ścieżki, więc CORS nie rozróżnia repozytoriów tego samego konta.
-3. `npx wrangler login`, następnie `npm run worker:deploy`. SQLite Durable Object i migracja są skonfigurowane w `wrangler.toml`. Sprawdź warunki i limity kont Cloudflare/Groq przed wdrożeniem; nie włączaj płatnego zastępstwa.
-4. `npx wrangler secret put GROQ_API_KEY` — podaj klucz w ukrytym monicie. Ponownie sprawdź, że sekret jest ustawiony w tym samym Workerze.
-5. W GitHub → Settings → Secrets and variables → Actions → **Variables** dodaj publiczne `VITE_API_URL` z adresem `https://pdf-insight-api.<twoja-subdomena>.workers.dev` (bez `/api/analyze`). To nie jest sekret. Klucza Groq nie dodawaj do zmiennych Vite.
-6. W GitHub → Settings → Pages → Source wybierz **GitHub Actions**.
-7. Wyślij kod z lokalnego katalogu projektu:
+Następnie:
 
 ```bash
-git init -b main
-git add .
-git commit -m "feat: implement PDF Insight with validated AI analysis"
-git remote add origin https://github.com/TWOJ_LOGIN/pdf-insight.git
-git push -u origin main
+npm run worker:dev
 ```
 
-Jeżeli paczka zawiera `.git`, zachowaj dostarczoną historię i pomiń `git init`, `git add` oraz pierwszy commit. W dostarczonej historii są logiczne etapy implementacji; nie twórz sztucznych commitów udających wcześniejszą pracę.
+Backend działa domyślnie pod <http://localhost:8787>. Oba terminale muszą pozostać uruchomione. Lokalny runtime można uruchomić bez logowania do Cloudflare; prawdziwa analiza wymaga działającego klucza Groq.
 
-8. Actions uruchomi lint → format → typy → testy → build → deploy. Adres: `https://TWOJ_LOGIN.github.io/pdf-insight/`. `base` jest wyliczany z nazwy repozytorium. Dla repozytorium użytkownika `TWOJ_LOGIN.github.io` zmień `VITE_BASE_PATH` w workflow na `/`.
-9. Sprawdź z prywatnego okna prawdziwy PDF, podsumowanie, zgodność faktów i eksport JSON. Dodaj rzeczywisty link do demo oraz zrzut ekranu do README. Nie deklaruj działającego demo przed tym testem.
+## Dane wynikowe
 
-## Architektura
+Eksport zawiera:
 
-- `src/components/Results.tsx` — wyniki, przełączanie widoku i pełny eksport JSON.
-- `src/lib/pdf.ts` — lokalny PDF.js, walidacja 10 MB, ekstrakcja stron. Worker PDF.js jest bundlowany przez Vite z `?url`, bez zależności od CDN.
-- `src/api/analyze.ts` — wywołanie API i walidacja odpowiedzi przed wyświetleniem.
-- `shared/schema.ts` — Zod, typy, limity, JSON Schema dostawcy oraz walidacja ISO.
-- `worker/index.ts` — CORS, ograniczony odczyt body, metadane z aplikacji, trwały limiter Durable Object.
-- `worker/groq.ts` — stały model `openai/gpt-oss-120b`, Structured Outputs, nieufna treść PDF w osobnej wiadomości danych, maksymalnie jedna ponowna próba po niepoprawnym wyniku.
+| Pole         | Zawartość                                    |
+| ------------ | -------------------------------------------- |
+| `document`   | fileName, pages, language, type, title, date |
+| `summary`    | podsumowanie w 3–5 zdaniach                  |
+| `keyPoints`  | 3–7 kluczowych punktów                       |
+| `entities`   | organizations i people                       |
+| `amounts`    | value, currency i context                    |
+| `dates`      | date i context                               |
+| `keywords`   | słowa kluczowe                               |
+| `processing` | strony odczytane OCR i liczba części         |
 
-Nazwę pliku i liczbę stron dodaje serwer z metadanych aplikacji, nie model. Klucze JSON są angielskie; wartości i podsumowanie w języku dokumentu. Nieobecne dane: `null` lub `[]`. Kwota bez określonej waluty ma `currency: null`. Dokładne daty są kalendarzowo walidowane. Typy: faktura, umowa, oferta, raport, inne. Podsumowanie: 3–5 zdań; keyPoints: 3–7.
+Klucze JSON są angielskie. Wartości opisowe mają być w języku dokumentu. Typ dokumentu przyjmuje stałe etykiety: `faktura`, `umowa`, `oferta`, `raport`, `inne`. Daty są w formacie `YYYY-MM-DD`, język jako kod ISO 639-1, waluta jako kod ISO 4217. Braki są reprezentowane przez `null` lub puste tablice zgodnie ze schematem. Walidacja formatu nie gwarantuje prawdziwości faktów.
 
-Lokalny Worker można testować bez logowania przez `npm run test:worker`; prawdziwa analiza wymaga sekretu.
+## Limity i czas analizy
 
-Warstwa walidacji modelu jest silniejsza od schematu przekazywanego do Groq: sprawdza kody ISO, daty i liczbę zdań przez `Intl.Segmenter`. Skróty mogą wpływać na segmentację; prompt prosi o unikanie ich w podsumowaniu.
+| Ograniczenie aplikacji | Wartość                                        |
+| ---------------------- | ---------------------------------------------- |
+| Rozmiar PDF            | 10000000 bajtów                                |
+| Liczba stron           | do 200                                         |
+| Wyodrębniony tekst     | do 60 000 znaków, łącznie ze znacznikami stron |
+| Liczba części          | do 8                                           |
+| Tekst jednej części    | do około 3300 tokenów danych                   |
+| Body żądania API       | do 400 000 bajtów                              |
+| Wspólny limiter demo   | 1 żądanie/minutę, 30/dzień UTC, 1 równocześnie |
+
+Każdy limit obowiązuje niezależnie. Dokument krótszy niż 60 000 znaków również może przekroczyć limit części. Przekroczenie limitu powoduje komunikat błędu; tekst ani tablice wynikowe nie są celowo obcinane.
+
+Konfiguracja została przygotowana dla budżetu Groq **8000 tokenów na minutę**, obejmującego treść, instrukcje i odpowiedź. To założenie konfiguracji, nie gwarancja limitów każdego konta. Backend szacuje budżet całego żądania, maksymalnej odpowiedzi i zapasu. Rzeczywiste limity należy sprawdzić w panelu Groq.
+
+Krótki dokument wymaga jednego żądania. Długi jest dzielony automatycznie: najpierw analizowane są części, następnie dodatkowe żądanie tworzy wspólne podsumowanie i punkty. Daty, kwoty i pozostałe tablice faktów są łączone w kodzie; usuwane są dokładne duplikaty, a odmienne konteksty pozostają.
+
+**Między żądaniami dla długiego dokumentu są przerwy po 65 sekund.** Przeglądarka musi pozostać otwarta. Dla umowy testowej podzielonej na 3 części potrzeba 4 żądań z syntezą oraz 3 przerw, czyli 195 sekund samych przerw, dodatkowo odczyt i generowanie. Ta konfiguracja **nie spełnia celu poniżej 30 sekund dla tego długiego pliku**. Czas krótkich analiz zależy od API i nie jest gwarantowany.
+
+Limit 30 żądań jest wspólny dla wszystkich użytkowników demo. Każda część i synteza liczą się osobno. Limit dobowy resetuje się o północy UTC, a nie po 24 godzinach od pierwszego użycia. Rezerwacja budżetu jest pobierana również przy błędzie. Komunikat limitera nie rozróżnia przekroczenia limitu minutowego i dziennego.
+
+Błędna odpowiedź modelu może zostać ponowiona maksymalnie raz, po 65 sekundach. Po błędzie limitu dostawcy nie uruchamiamy płatnego zastępstwa. Ponowne kliknięcie analizy po błędzie rozpoczyna przetwarzanie od początku; nie ma wznawiania od ostatniej części.
+
+## OCR i ograniczenia jakości
+
+OCR działa lokalnie w przeglądarce przez WebAssembly i nie wymaga GPU ani osobnego klucza. Zasoby silnika i języków są serwowane z aplikacji, bez zewnętrznego API OCR. Kopiowane zasoby zajmują około 62 MB; pierwsze użycie pobiera potrzebny wariant silnika i modele językowe. W cache mogą pozostać modele językowe, nie zapis analizy dokumentu.
+
+- OCR uruchamia się tylko wtedy, gdy na stronie nie odczytano tekstu. Obrazy zawierające tekst lub tabele na stronie z istniejącą warstwą tekstową mogą zostać pominięte.
+- Tabele z warstwą tekstową są odczytywane przez PDF.js. Złożone kolumny, kolejność elementów i komórki tabel mogą utrudniać interpretację.
+- OCR może mylić litery i cyfry. Całkowicie pusta lub nieczytelna strona kończy analizę komunikatem zamiast cichego pominięcia.
+- PDF zabezpieczony hasłem wymaga odblokowanej kopii.
+- AI może błędnie interpretować warunki, daty i kwoty mimo poprawnej struktury JSON. Wynik należy porównać ze źródłem.
+- Nie ma historii analiz ani trwałego zapisywania wyników w aplikacji.
+
+W rzeczywistych testach krótkiej umowy, faktury i oferty poprawnie rozpoznano główne fakty. Długa umowa ujawniła m.in. nieprecyzyjny opis terminu podwyżki, potencjalny koszt potraktowany jako pewny, dopowiedziane dni w datach miesięcznych i duplikaty nazwisk. Wynik uwzględnił skan aneksu oraz zignorował instrukcję podania fałszywej ceny 1 PLN. Jeden poprawny test nie dowodzi ogólnej odporności na prompt injection. Szczegóły współpracy z AI i poprawek są w [AI_LOG.md](AI_LOG.md).
 
 ## Bezpieczeństwo i prywatność
 
-PDF pozostaje w przeglądarce. Po zaznaczeniu zgody tekst trafia do Workera i Groq. Aplikacja nie utrwala PDF, tekstu ani wyników. Zasady przechowywania po stronie dostawcy AI zależą od jego aktualnych warunków; nie przesyłaj poufnych dokumentów bez odpowiedniej zgody. Brak logowania treści i kluczy, brak HTML z odpowiedzi modelu, CORS tylko dla wskazanych origins. CORS nie chroni przed klientem, który podszyje się pod Origin.
+- Oryginalny plik jest przetwarzany w przeglądarce; do backendu i Groq trafia tekst oraz metadane po zaznaczeniu zgody.
+- Kod aplikacji nie utrwala dokumentów, tekstu ani wyników na serwerze i nie loguje ich treści. Warunki przetwarzania po stronie dostawców należy ocenić osobno przed użyciem dokumentów poufnych.
+- Klucz Groq jest sekretem backendu. Model wybierany jest po stronie serwera.
+- Endpoint sprawdza rozmiar żądania, schemat, origin i wspólny limit. CORS nie zastępuje uwierzytelniania; zewnętrzny klient może podrobić nagłówek Origin i zużyć pulę demo.
+- Durable Object przechowuje liczniki, rezerwacje i dzienny skrót IP używany w limiterze, bez dokumentów. To dane pseudonimowe. Wygasłe wpisy są usuwane przy kolejnych żądaniach.
+- Treść PDF jest w prompcie traktowana jako nieufne dane. Wyniki są renderowane jako tekst, bez `dangerouslySetInnerHTML`.
+- Analizy można wyłączyć przez `ANALYSIS_ENABLED = "false"` w konfiguracji Workera i ponowne wdrożenie.
 
-Jeden wspólny Durable Object przechowuje liczniki i krótkie rezerwacje, a nie dokumenty. Limit: **1 analiza/minutę, 30 analiz/dobę UTC, 1 równoczesna analiza**, maksymalnie 2 wywołania Groq na analizę. Rezerwacja wygasa po 35 s, AI ma wspólny timeout 24 s dla obu prób. Dzienny budżet jest pobierany także przy błędzie — to ogranicza nadużycia. IP zapisuje się wyłącznie jako dzienny skrót w minutowym oknie limitera; wpisy wygasłe są usuwane przy kolejnym żądaniu, a do tego czasu pozostają w pamięci trwałej. To dane pseudonimowe, nie anonimowe. Limit jest celowo konserwatywny dla darmowej puli; nie gwarantuje dostępności Groq. Duże odpowiedzi/rozumowanie również zużywają tokeny. Wyłączenie analiz: `ANALYSIS_ENABLED = "false"` i ponowne wdrożenie Workera.
-
-## Sprawdzenie jakości
+## Testy i build
 
 ```bash
 npm run lint
@@ -79,23 +175,20 @@ npm run build
 npx wrangler deploy --dry-run
 ```
 
-Test runtime `npm run test:worker` uruchamia lokalny workerd/Miniflare i atrapę Groq bez połączenia z dostawcą; weryfikuje preflight, CORS, rozmiar body, walidację wejścia, metadane i trwały limiter w lokalnym runtime.
+Testy jednostkowe sprawdzają m.in. walidację, dzielenie tekstu, scalanie wyników, ekstrakcję z atrapą PDF.js i obsługę błędów. `test:worker` uruchamia lokalny runtime z atrapą Groq i sprawdza CORS, preflight, walidację, rozmiar body, metadane oraz limiter. Nie zużywa tokenów prawdziwego modelu.
 
-Testy jednostkowe obejmują schemat, brakujące dane, daty, waluty, limity wejścia, liczbę zdań, metadane, liczbę prób, przerwanie po 429 i niekompletną odpowiedź. Mocki nie potwierdzają jakości prawdziwego modelu ani odporności na prompt injection.
+Rzeczywiste analizy wykonano lokalnie po stronie autora, a eksporty porównano z PDF-ami. Testy automatyczne z atrapami nie potwierdzają jakości modelu.
 
-Przed oddaniem sprawdź: umowę z maila i drugi rodzaj dokumentu; zgodność każdej daty/kwoty/strony; PDF chroniony, uszkodzony, skan, pustą stronę, ponad 10 MB; timeout, 429; kopiowanie i pobranie JSON; klawiaturę i 360 px; publiczne zasoby i worker PDF.js na ścieżce repozytorium. Zmierz pełny czas od kliknięcia do wyniku. Cel briefu to <30 s, nie gwarancja. Pełna kontrola wdrożenia wymaga kont i klucza użytkownika.
+Opcjonalna diagnostyka odczytu i OCR w Node:
 
-## Ograniczenia
+```bash
+node scripts/check-pdf.mjs /sciezka/do/testowego.pdf
+```
 
-- Do 10 MB, 200 stron, około 11 000 znaków tekstu; za długie dokumenty są odrzucane w całości. Bez chunkingu, OCR i historii lokalnej.
-- Strona bez tekstu (także pusta) zatrzymuje analizę, aby nie pominąć potencjalnego skanu. Można przygotować kopię PDF bez pustych stron.
-- AI może błędnie odczytać fakty mimo poprawnego JSON. Wyniki trzeba porównać ze źródłem.
-- PDF.js czyta elementy w kolejności warstwy tekstowej; złożone tabele i kolumny mogą wymagać ręcznej kontroli.
-- Brak klucza i niezałączona umowa testowa uniemożliwiają potwierdzenie jakości Groq oraz end-to-end na właściwym materiale.
-- Wygląd używa opcjonalnych fontów Google z systemowym fallbackiem; czytanie PDF nie zależy od ich dostępności.
+Narzędzie wymaga opcjonalnego pakietu canvas dostarczanego z PDF.js. Wypisuje także rozpoznany tekst skanu, więc należy używać go świadomie na materiałach testowych. Nie wywołuje API AI.
 
-## Oddanie
+## Hosting i dostępność
 
-Repozytorium → pole „Link do zadania testowego”; GitHub Pages → „Komentarz do zadania”. Formularz i dane finansowe uzupełnia kandydat. Termin: **27.10.2026, 10:00 czasu Warszawy**. Utrzymuj demo i API co najmniej 14 dni po oddaniu. Rzeczywiste limity konta sprawdź w panelu Groq.
+Frontend aplikacji jest przeznaczony do publikacji na GitHub Pages. Backend działa na Cloudflare Workers, a analizę tekstu wykonuje model udostępniany przez Groq.
 
-Dokumentacja integracji: https://console.groq.com/docs/structured-outputs oraz https://developers.cloudflare.com/durable-objects/api/sqlite-storage-api/.
+Korzystanie z publicznego demo nie wymaga instalowania programu ani posiadania własnego klucza API. Dokument jest odczytywany w przeglądarce, a po wyrażeniu zgody wyodrębniony tekst trafia do analizy AI.
