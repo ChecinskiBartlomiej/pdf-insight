@@ -2,6 +2,26 @@
 
 Aplikacja webowa, która odczytuje PDF, tworzy krótkie podsumowanie i zamienia treść dokumentu w uporządkowane dane JSON.
 
+## Zrzuty ekranu
+
+Wybór dokumentu:
+
+![PDF Insight — wgrywanie PDF](docs/upload.png)
+
+Wynik analizy:
+
+![PDF Insight — podsumowanie i dane](docs/results.png)
+
+## Korzystanie z aplikacji
+
+Otwórz demo: https://checinskibartlomiej.github.io/pdf-insight/
+
+Wybierz PDF, zaznacz zgodę na analizę i kliknij „Przeanalizuj PDF”.
+Korzystanie z demo nie wymaga instalacji, konta ani własnego klucza API.
+
+Instrukcja uruchomienia lokalnego poniżej jest przeznaczona dla osób,
+które chcą samodzielnie uruchomić lub rozwijać kod.
+
 ## Demo i repozytorium
 
 - **Demo GitHub Pages:**
@@ -54,16 +74,6 @@ worker/index.ts            — endpoint, CORS i limiter
 worker/groq.ts             — prompt, wywołanie modelu i walidacja
 scripts/copy-ocr.mjs        — przygotowanie zasobów OCR
 ```
-
-## Korzystanie z aplikacji
-
-Otwórz demo: https://checinskibartlomiej.github.io/pdf-insight/
-
-Wybierz PDF, zaznacz zgodę na analizę i kliknij „Przeanalizuj PDF”.
-Korzystanie z demo nie wymaga instalacji, konta ani własnego klucza API.
-
-Instrukcja uruchomienia lokalnego poniżej jest przeznaczona dla osób,
-które chcą samodzielnie uruchomić lub rozwijać kod.
 
 ## Uruchomienie lokalne
 
