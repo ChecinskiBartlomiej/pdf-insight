@@ -55,6 +55,16 @@ worker/groq.ts             — prompt, wywołanie modelu i walidacja
 scripts/copy-ocr.mjs        — przygotowanie zasobów OCR
 ```
 
+## Korzystanie z aplikacji
+
+Otwórz demo: https://checinskibartlomiej.github.io/pdf-insight/
+
+Wybierz PDF, zaznacz zgodę na analizę i kliknij „Przeanalizuj PDF”.
+Korzystanie z demo nie wymaga instalacji, konta ani własnego klucza API.
+
+Instrukcja uruchomienia lokalnego poniżej jest przeznaczona dla osób,
+które chcą samodzielnie uruchomić lub rozwijać kod.
+
 ## Uruchomienie lokalne
 
 Wymagania: Node.js 24, npm i klucz API Groq. Jeśli używasz nvm, wersję można wybrać poleceniem `nvm use` w katalogu projektu.
@@ -118,15 +128,15 @@ Klucze JSON są angielskie. Wartości opisowe mają być w języku dokumentu. Ty
 
 ## Limity i czas analizy
 
-| Ograniczenie aplikacji | Wartość                                        |
-| ---------------------- | ---------------------------------------------- |
-| Rozmiar PDF            | 10000000 bajtów                                |
-| Liczba stron           | do 200                                         |
-| Wyodrębniony tekst     | do 60 000 znaków, łącznie ze znacznikami stron |
-| Liczba części          | do 8                                           |
-| Tekst jednej części    | do około 3300 tokenów danych                   |
-| Body żądania API       | do 400 000 bajtów                              |
-| Wspólny limiter demo   | 1 żądanie/minutę, 30/dzień UTC, 1 równocześnie |
+| Ograniczenie aplikacji             | Wartość                                                      |
+| ---------------------------------- | ------------------------------------------------------------ |
+| Rozmiar PDF                        | do 10 MB                                                     |
+| Liczba stron                       | do 200                                                       |
+| Wyodrębniony tekst                 | do 60 000 znaków, łącznie ze znacznikami stron               |
+| Liczba części                      | do 8                                                         |
+| Tekst jednej części                | maksymalnie 3300 tokenów tekstu według użytego tokenizera    |
+| Rozmiar danych jednego żądania API | do 0,4 MB                                                    |
+| Wspólny limit demo                 | 1 żądanie/minutę, 30 żądań/dzień UTC, 1 żądanie równocześnie |
 
 Każdy limit obowiązuje niezależnie. Dokument krótszy niż 60 000 znaków również może przekroczyć limit części. Przekroczenie limitu powoduje komunikat błędu; tekst ani tablice wynikowe nie są celowo obcinane.
 
